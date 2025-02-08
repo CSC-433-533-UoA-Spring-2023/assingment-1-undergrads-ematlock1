@@ -16,6 +16,9 @@ var width = 0;
 var height = 0;
 // The image data
 var ppm_img_data;
+var angle = 0;
+var scaleFactor = 1;
+var scaleDirection = 1;
 
 //Function to process upload
 var upload = function () {
@@ -30,47 +33,42 @@ var upload = function () {
             //if successful, file data has the contents of the uploaded file
             var file_data = fReader.result;
             parsePPM(file_data);
-
-            /*
-            * TODO: ADD CODE HERE TO DO 2D TRANSFORMATION and ANIMATION
-            * Modify any code if needed
-            * Hint: Write a rotation method, and call WebGL APIs to reuse the method for animation
-            */
-	    
-            // *** The code below is for the template to show you how to use matrices and update pixels on the canvas.
-            // *** Modify/remove the following code and implement animation
-
-	    // Create a new image data object to hold the new image
-            var newImageData = ctx.createImageData(width, height);
-	    var transMatrix = GetTranslationMatrix(0, height);// Translate image
-	    var scaleMatrix = GetScalingMatrix(1, -1);// Flip image y axis
-	    var matrix = MultiplyMatrixMatrix(transMatrix, scaleMatrix);// Mix the translation and scale matrices
-            
-            // Loop through all the pixels in the image and set its color
-            for (var i = 0; i < ppm_img_data.data.length; i += 4) {
-
-                // Get the pixel location in x and y with (0,0) being the top left of the image
-                var pixel = [Math.floor(i / 4) % width, 
-                             Math.floor(i / 4) / width, 1];
-        
-                // Get the location of the sample pixel
-                var samplePixel = MultiplyMatrixVector(matrix, pixel);
-
-                // Floor pixel to integer
-                samplePixel[0] = Math.floor(samplePixel[0]);
-                samplePixel[1] = Math.floor(samplePixel[1]);
-
-                setPixelColor(newImageData, samplePixel, i);
-            }
-
-            // Draw the new image
-            ctx.putImageData(newImageData, canvas.width/2 - width/2, canvas.height/2 - height/2);
-	    
-	    // Show matrix
-            showMatrix(matrix);
+	    startAnimation();  
         }
     }
+};
+
+function startAnimation() {
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        var rotationMatrix = GetRotationMatrix(angle);
+        var newImageData = ctx.createImageData(width, height);
+
+        for (var i = 0; i < ppm_img_data.data.length; i += 4) {
+            var x = (i / 4) % width - centerX;
+            var y = Math.floor(i / 4 / width) - centerY;
+            var pixel = [x, y, 1];
+
+            var transformedPixel = MultiplyMatrixVector(rotationMatrix, pixel);
+            transformedPixel[0] = Math.floor(transformedPixel[0] + centerX);
+            transformedPixel[1] = Math.floor(transformedPixel[1] + centerY);
+
+            setPixelColor(newImageData, transformedPixel, i);
+        }
+
+        ctx.putImageData(newImageData, canvas.width / 2 - width / 2, canvas.height / 2 - height / 2);
+        showMatrix(rotationMatrix);
+        angle += 5; // Rotates 2 degrees per frame (Adjust speed if needed)
+
+        requestAnimationFrame(animate);
+    }
+    animate();
 }
+
 
 // Show transformation matrix on HTML
 function showMatrix(matrix){
