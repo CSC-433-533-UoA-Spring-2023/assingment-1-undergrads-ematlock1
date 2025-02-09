@@ -39,36 +39,65 @@ var upload = function () {
 };
 
 function startAnimation() {
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-        var centerX = width / 2;
-        var centerY = height / 2;
+    // Dynamically adjust canvas size for the full rotation
+    var diagonal = Math.ceil(Math.sqrt(ppm_img_data.width ** 2 + ppm_img_data.height ** 2));
+    canvas.width = diagonal;
+    canvas.height = diagonal;
 
-        var rotationMatrix = GetRotationMatrix(angle);
+    function animate() {
+        // Clear the canvas and fill it with a white background
+        ctx.fillStyle = "white"; // Set background color to white
+        ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
+
+        var centerX = canvas.width / 2;
+        var centerY = canvas.height / 2;
+
+        var matrix = GetRotationMatrix(angle);
+
+        var width = ppm_img_data.width;
+        var height = ppm_img_data.height;
         var newImageData = ctx.createImageData(width, height);
 
+        // Loop over every pixel in the output image
         for (var i = 0; i < ppm_img_data.data.length; i += 4) {
-            var x = (i / 4) % width - centerX;
-            var y = Math.floor(i / 4 / width) - centerY;
-            var pixel = [x, y, 1];
+            var pixel = [
+                Math.floor(i / 4) % width - width / 2, // Center the pixel
+                Math.floor(i / 4 / width) - height / 2, // Center the pixel
+                1,
+            ];
 
-            var transformedPixel = MultiplyMatrixVector(rotationMatrix, pixel);
-            transformedPixel[0] = Math.floor(transformedPixel[0] + centerX);
-            transformedPixel[1] = Math.floor(transformedPixel[1] + centerY);
+            var samplePixel = MultiplyMatrixVector(matrix, pixel);
 
-            setPixelColor(newImageData, transformedPixel, i);
+            // Map back to image coordinates
+            samplePixel[0] = Math.floor(samplePixel[0] + width / 2);
+            samplePixel[1] = Math.floor(samplePixel[1] + height / 2);
+
+            // Set the pixel color if within bounds
+            if (
+                samplePixel[0] >= 0 &&
+                samplePixel[0] < width &&
+                samplePixel[1] >= 0 &&
+                samplePixel[1] < height
+            ) {
+                setPixelColor(newImageData, samplePixel, i);
+            }
         }
 
-        ctx.putImageData(newImageData, canvas.width / 2 - width / 2, canvas.height / 2 - height / 2);
-        showMatrix(rotationMatrix);
-        angle += 5; // Rotates 2 degrees per frame (Adjust speed if needed)
+        // Draw the rotated image centered on the canvas
+        ctx.putImageData(
+            newImageData,
+            centerX - width / 2,
+            centerY - height / 2
+        );
+
+        showMatrix(matrix);
+        angle += 5;
 
         requestAnimationFrame(animate);
     }
+
     animate();
 }
-
 
 // Show transformation matrix on HTML
 function showMatrix(matrix){
