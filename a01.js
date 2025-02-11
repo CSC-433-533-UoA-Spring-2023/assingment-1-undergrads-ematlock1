@@ -45,9 +45,8 @@ function startAnimation() {
     canvas.height = diagonal;
 
     function animate() {
-        // Clear the canvas and fill it with a white background
-        ctx.fillStyle = "white"; // Set background color to white
-        ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
+        ctx.fillStyle = "white"; // Background color
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         var centerX = canvas.width / 2;
         var centerY = canvas.height / 2;
@@ -56,40 +55,34 @@ function startAnimation() {
 
         var width = ppm_img_data.width;
         var height = ppm_img_data.height;
-        var newImageData = ctx.createImageData(width, height);
+        var newImageData = ctx.createImageData(canvas.width, canvas.height);
 
-        // Loop over every pixel in the output image
-        for (var i = 0; i < ppm_img_data.data.length; i += 4) {
-            var pixel = [
-                Math.floor(i / 4) % width - width / 2, // Center the pixel
-                Math.floor(i / 4 / width) - height / 2, // Center the pixel
-                1,
-            ];
+        for (var i = 0; i < newImageData.data.length; i += 4) {
+            var x = (i / 4) % canvas.width;
+            var y = Math.floor((i / 4) / canvas.width);
 
-            var samplePixel = MultiplyMatrixVector(matrix, pixel);
+            // Offset to center image in the new canvas
+            var centeredPixel = [x - centerX, y - centerY, 1];
 
-            // Map back to image coordinates
-            samplePixel[0] = Math.floor(samplePixel[0] + width / 2);
-            samplePixel[1] = Math.floor(samplePixel[1] + height / 2);
+            var originalPixel = MultiplyMatrixVector(GetRotationMatrix(angle), centeredPixel);
 
-            // Set the pixel color if within bounds
-            if (
-                samplePixel[0] >= 0 &&
-                samplePixel[0] < width &&
-                samplePixel[1] >= 0 &&
-                samplePixel[1] < height
-            ) {
-                setPixelColor(newImageData, samplePixel, i);
+            // Convert back to original image space
+            var originalX = Math.floor(originalPixel[0] + width / 2);
+            var originalY = Math.floor(originalPixel[1] + height / 2);
+
+            // Ensure original pixel is within bounds before copying
+            if (originalX >= 0 && originalX < width && originalY >= 0 && originalY < height) {
+                var originalIndex = (originalY * width + originalX) * 4;
+                // Copy pixel color from original image to rotated image
+                newImageData.data[i] = ppm_img_data.data[originalIndex];       
+                newImageData.data[i + 1] = ppm_img_data.data[originalIndex + 1]; 
+                newImageData.data[i + 2] = ppm_img_data.data[originalIndex + 2]; 
+                newImageData.data[i + 3] = 255;
             }
         }
 
         // Draw the rotated image centered on the canvas
-        ctx.putImageData(
-            newImageData,
-            centerX - width / 2,
-            centerY - height / 2
-        );
-
+        ctx.putImageData(newImageData, 0, 0);
         showMatrix(matrix);
         angle += 5;
 
